@@ -33,6 +33,7 @@ By following this guide, you will:
 │   │   └── assets.py
 │   └── requirements.txt
 └── workspace.yaml
+└── docker-compose.yml
 ```
 
 Each code location (`finance_code_location`, `marketing_code_location`, and `ml_code_location`) has its own Dockerfile. The main `Dockerfile` at the root directory is used for the Dagster webserver and daemon.
