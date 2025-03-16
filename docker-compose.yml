@@ -1,0 +1,102 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: dagster-poc-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dagster_poc
+    ports:
+      - "5432:5432"
+    networks:
+      - dagster-poc-network
+    restart: unless-stopped
+
+  finance_svc:
+    build: ./finance_code_location
+    container_name: finance_svc
+    environment:
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_poc
+      DAGSTER_CURRENT_IMAGE: finance_svc
+    ports:
+      - "4000:4000"
+    networks:
+      - dagster-poc-network
+    command: dagster api grpc -h 0.0.0.0 -p 4000 --module-name definitions
+    depends_on:
+      - postgres
+
+  marketing_svc:
+    build: ./marketing_code_location
+    container_name: marketing_svc
+    environment:
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_poc
+      DAGSTER_CURRENT_IMAGE: marketing_svc
+    ports:
+      - "4001:4000"
+    networks:
+      - dagster-poc-network
+    command: dagster api grpc -h 0.0.0.0 -p 4000 --module-name definitions
+    depends_on:
+      - postgres
+
+  ml_svc:
+    build: ./ml_code_location
+    container_name: ml_svc
+    environment:
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_poc
+      DAGSTER_CURRENT_IMAGE: ml_svc
+    ports:
+      - "4002:4000"
+    networks:
+      - dagster-poc-network
+    command: dagster api grpc -h 0.0.0.0 -p 4000 --module-name definitions
+    depends_on:
+      - postgres
+
+  dagster_webserver:
+    build: .
+    container_name: dagster_webserver
+    environment:
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_poc
+    ports:
+      - "3000:3000"
+    networks:
+      - dagster-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: dagster-webserver -h 0.0.0.0 -p 3000 -w workspace.yaml
+    depends_on:
+      - postgres
+      - finance_svc
+      - marketing_svc
+      - ml_svc
+
+  dagster_daemon:
+    build: .
+    container_name: dagster_daemon
+    environment:
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_poc
+    networks:
+      - dagster-poc-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: dagster-daemon run
+    depends_on:
+      - dagster_webserver
+
+networks:
+  dagster-poc-network:
+    driver: bridge
